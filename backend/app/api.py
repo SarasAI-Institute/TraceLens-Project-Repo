@@ -1,8 +1,10 @@
 """FastAPI routes for TraceLens"""
 
-from fastapi import FastAPI, HTTPException
+import os
+
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional
+from typing import Optional, Literal
 
 from app.models import (
     Project, ProjectCreate, ProjectUpdate, ProjectList, ProjectStats,
@@ -13,7 +15,7 @@ from app.storage import storage
 from app.utils import (
     calculate_cost, sort_traces_by_date, paginate,
     filter_traces_by_project, filter_traces_by_model,
-    filter_traces_by_status, search_traces, compute_project_stats
+    filter_traces_by_status, search_traces, compute_project_stats, validate_tags
 )
 from app import __version__
 
@@ -27,8 +29,10 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=[origin.strip() for origin in os.getenv(
+        "ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+    ).split(",") if origin.strip()],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -108,10 +112,10 @@ def get_project_stats(project_id: str):
 def list_traces(
     project_id: Optional[str] = None,
     model: Optional[str] = None,
-    status: Optional[str] = None,
+    status: Optional[Literal["success", "error"]] = None,
     search: Optional[str] = None,
-    limit: int = 20,
-    offset: int = 0
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0)
 ):
     traces = storage.get_all_traces()
 
@@ -144,6 +148,9 @@ def create_trace(trace_data: TraceCreate):
     project = storage.get_project(trace_data.project_id)
     if not project:
         raise HTTPException(status_code=400, detail="Project not found")
+
+    if not validate_tags(trace_data.tags):
+        raise HTTPException(status_code=422, detail="Use at most 10 non-blank tags, each at most 32 characters")
 
     cost = calculate_cost(
         trace_data.model,

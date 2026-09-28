@@ -9,7 +9,7 @@ from app.storage import storage
 @pytest.fixture
 def client():
     """Create a test client for the API."""
-    return TestClient(app)
+    return TestClient(app, raise_server_exceptions=False)
 
 
 @pytest.fixture(autouse=True)

@@ -5,7 +5,8 @@ from app.models import Trace, ProjectStats
 
 
 # Pricing in USD per 1 MILLION tokens: (input_price, output_price)
-# Prices roughly follow OpenRouter listings.
+# Fixed teaching fixtures, not current provider prices or billing advice.
+# Model names are opaque example identifiers; no provider is contacted.
 MODEL_PRICING = {
     "openai/gpt-4o-mini": (0.15, 0.60),
     "openai/gpt-4o": (2.50, 10.00),

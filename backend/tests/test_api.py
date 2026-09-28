@@ -2,8 +2,8 @@
 
 These tests verify the API endpoints work correctly.
 Some of them currently FAIL — the failures point at real defects
-listed in the Module 1 issue tickets. Students should expand these
-tests significantly in Module 3.
+listed in the Module 2 issue tickets. Students should expand these
+tests significantly in Module 4.
 """
 
 import pytest
@@ -68,24 +68,27 @@ class TestProjects:
     def test_delete_project_with_traces(
         self, client: TestClient, sample_project, sample_trace_data
     ):
-        """Deleting a project that has traces.
-
-        NOTE: Ticket TL-5 — traces are left behind with an invalid
-        project_id. This test documents the current (buggy) behavior.
-        After fixing, update it to verify your chosen strategy.
-        """
+        """TL-5: cascade, detach or reject, but never leave a dangling reference."""
         project_id = sample_project["id"]
-        trace_data = {**sample_trace_data, "project_id": project_id}
-        client.post("/traces", json=trace_data)
-
-        client.delete(f"/projects/{project_id}")
-
-        traces = client.get("/traces").json()["traces"]
-        if traces:
-            # Trace still exists, pointing at a project that is gone.
-            assert traces[0]["project_id"] == project_id
-            # After the fix: traces should be deleted, detached,
-            # or the deletion should have been blocked.
+        created = client.post("/traces", json={**sample_trace_data, "project_id": project_id})
+        assert created.status_code == 201
+        trace_id = created.json()["id"]
+        deleted = client.delete(f"/projects/{project_id}")
+        project = client.get(f"/projects/{project_id}")
+        # Inspect storage as well as HTTP: a list filter must not hide an orphan.
+        from app.storage import storage
+        surviving = storage.get_trace(trace_id)
+        if deleted.status_code == 409:  # Documented reject-if-nonempty policy.
+            assert project.status_code == 200
+            assert surviving is not None and surviving.project_id == project_id
+        else:
+            assert deleted.status_code == 204
+            assert project.status_code == 404
+            assert surviving is None or surviving.project_id is None
+            if surviving is not None:  # Detach must remain representable over the API.
+                detail = client.get(f"/traces/{trace_id}")
+                assert detail.status_code == 200
+                assert detail.json()["project_id"] is None
 
 
 class TestTraces:
@@ -204,15 +207,18 @@ class TestTraces:
     def test_traces_sorted_newest_first(
         self, client: TestClient, sample_project, sample_trace_data
     ):
-        import time
+        from datetime import datetime, timezone, timedelta
+        from app.storage import storage
 
         project_id = sample_project["id"]
         first = {**sample_trace_data, "project_id": project_id, "prompt": "First prompt"}
         second = {**sample_trace_data, "project_id": project_id, "prompt": "Second prompt"}
 
-        client.post("/traces", json=first)
-        time.sleep(0.05)
-        client.post("/traces", json=second)
+        first_id = client.post("/traces", json=first).json()["id"]
+        second_id = client.post("/traces", json=second).json()["id"]
+        baseline = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        storage.get_trace(first_id).created_at = baseline
+        storage.get_trace(second_id).created_at = baseline + timedelta(seconds=1)
 
         response = client.get("/traces")
         traces = response.json()["traces"]

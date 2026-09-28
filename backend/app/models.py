@@ -1,8 +1,8 @@
 """Pydantic models for TraceLens"""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from uuid import uuid4
 
 
@@ -11,7 +11,7 @@ def generate_id() -> str:
 
 
 def get_current_time() -> datetime:
-    return datetime.utcnow()
+    return datetime.now(timezone.utc)
 
 
 # ============== Project Models ==============
@@ -34,8 +34,7 @@ class Project(ProjectBase):
     created_at: datetime = Field(default_factory=get_current_time)
     updated_at: datetime = Field(default_factory=get_current_time)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============== Trace Models ==============
@@ -62,8 +61,7 @@ class Trace(TraceBase):
     cost_usd: float = 0.0
     created_at: datetime = Field(default_factory=get_current_time)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============== Stats Models ==============

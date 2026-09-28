@@ -8,6 +8,7 @@ Creates 3 projects and ~60 traces so the dashboard and trace
 explorer have something to show.
 """
 
+import argparse
 import random
 import httpx
 
@@ -52,7 +53,13 @@ ERRORS = [
 
 
 def main():
-    with httpx.Client(base_url=BASE_URL, timeout=10) as client:
+    """Add synthetic projects/traces, reporting only successful API writes."""
+    parser = argparse.ArgumentParser(description="Add synthetic TraceLens sample data (no LLM calls).")
+    parser.add_argument("--base-url", default=BASE_URL)
+    parser.add_argument("--seed", type=int, default=42)
+    args = parser.parse_args()
+    rng = random.Random(args.seed)
+    with httpx.Client(base_url=args.base_url, timeout=10) as client:
         project_ids = []
         for project in PROJECTS:
             response = client.post("/projects", json=project)
@@ -62,22 +69,23 @@ def main():
 
         trace_count = 0
         for project_id in project_ids:
-            for _ in range(random.randint(15, 25)):
-                is_error = random.random() < 0.12
-                idx = random.randrange(len(PROMPTS))
+            for _ in range(rng.randint(15, 25)):
+                is_error = rng.random() < 0.12
+                idx = rng.randrange(len(PROMPTS))
                 trace = {
                     "project_id": project_id,
-                    "model": random.choice(MODELS),
+                    "model": rng.choice(MODELS),
                     "prompt": PROMPTS[idx],
                     "response": None if is_error else RESPONSES[idx],
-                    "prompt_tokens": random.randint(200, 4000),
-                    "completion_tokens": 0 if is_error else random.randint(50, 1200),
-                    "latency_ms": random.randint(2000, 30000) if is_error else random.randint(300, 6000),
+                    "prompt_tokens": rng.randint(200, 4000),
+                    "completion_tokens": 0 if is_error else rng.randint(50, 1200),
+                    "latency_ms": rng.randint(2000, 30000) if is_error else rng.randint(300, 6000),
                     "status": "error" if is_error else "success",
-                    "error_message": random.choice(ERRORS) if is_error else None,
-                    "tags": random.sample(["prod", "staging", "batch", "eval", "v2"], k=random.randint(0, 2)),
+                    "error_message": rng.choice(ERRORS) if is_error else None,
+                    "tags": rng.sample(["prod", "staging", "batch", "eval", "v2"], k=rng.randint(0, 2)),
                 }
-                client.post("/traces", json=trace)
+                response = client.post("/traces", json=trace)
+                response.raise_for_status()
                 trace_count += 1
 
         print(f"Created {trace_count} traces across {len(project_ids)} projects.")

@@ -1,175 +1,98 @@
-# TraceLens
+# TraceLens - optional capstone starter
 
-**LLM Observability & Evaluation Platform**
+**AIE 500 | 10x Coding with AI | Modules 2-6**
 
----
+Choose **TraceLens instead of PromptLab** if you want a more challenging domain. You build an LLM observability and evaluation application: projects contain traces of model calls, with token counts, cost, latency and errors. The course videos demonstrate PromptLab; there are no TraceLens walkthrough videos. Apply the same methods to this codebase independently.
 
-## Welcome to the Team! 👋
+Both tracks assess the **same 22 criteria and three competencies**, with the same mastery rules. TraceLens changes the defects, features and user journeys, not the grading threshold. Module 1's ungraded TokenScope activity remains common to both tracks. Choose one capstone before Module 2 and keep it through the final defense.
 
-Congratulations on joining the TraceLens engineering team! You've been brought on to take over our observability product after the previous developer left — somewhat abruptly.
+## Start here
 
-### What is TraceLens?
+1. Create your own copy following [STUDENT_WORKFLOW.md](STUDENT_WORKFLOW.md).
+2. Run the backend and its diagnostic tests below.
+3. Read [Module 2](milestones/module-02.md), [CONTRACT.md](CONTRACT.md) and the [rubric PDFs](rubrics/README.md) before making repairs.
+4. Keep authentic prompts, checks and commits in [EVIDENCE.md](EVIDENCE.md) as you work.
 
-TraceLens is a self-hosted observability platform for teams that ship LLM features. Think of it as a **"Datadog for LLM calls"** — every prompt your product sends to a model gets logged as a *trace*, and TraceLens turns those traces into answers:
+Use one repository across the course. **No weekly capstone upload is required.** Prepare evidence at each milestone; submit the final repository, evidence and recording through the course channel. [ASSESSMENT.md](ASSESSMENT.md) defines review and defense requirements. [COMPETENCY_MAP.md](COMPETENCY_MAP.md) compares the two tracks.
 
-- 📡 **Ingest traces** — model, prompt, response, tokens, latency, status, tags
-- 📁 **Organize by project** — one project per product or feature
-- 💰 **Track spend** — per-call cost computed from model pricing tables
-- 📊 **Aggregate stats** — cost, latency, error rate per project
-- 🔎 **Explore traces** — filter by project, model, status; search; paginate
-- 🧪 **Evaluations & alerting** — you'll specify and build these yourself
+## Local setup
 
-### The Current Situation
+Use Python **3.12**, Git and your local editor. Use the course's Codex or Claude workflow with your own account. No Codespaces, dev container, Continue configuration, shared API key or model-provider account is required to run TraceLens. Node.js is needed only when you build React in Module 5; use a supported LTS version compatible with your chosen Vite release and record it. Docker is introduced in Module 4.
 
-The previous developer left us with a *partially working* backend, and the issue tracker has been filling up:
+From the root of your own cloned repository:
 
-| Ticket | Reported symptom |
-|--------|------------------|
-| **TL-1** | Opening a trace that doesn't exist crashes with a 500 instead of returning 404 |
-| **TL-2** | Customers say dashboard costs are **~1000× higher** than their provider bills |
-| **TL-3** | The trace list pager is broken — pages overlap by one item, and `total` is wrong so page numbers can't be computed |
-| **TL-4** | Viewing stats for a **freshly created project** crashes with a 500 |
-| **TL-5** | Deleting a project leaves its traces behind, pointing at a project that no longer exists |
-| **TL-6** | The README documents `PATCH /projects/{id}` for renaming projects — it was never implemented |
-
-On top of that: the **documentation is minimal**, the **tests are thin** (some of them fail on purpose — they point at the tickets above), there's **no CI/CD pipeline**, and **no frontend** has been built yet.
-
-Your job across the five modules is to transform this into a **production-ready, full-stack observability product**.
-
----
-
-## Quick Start
-
-### Prerequisites
-
-- Python 3.10+
-- Node.js 18+ (for Module 4)
-- Git
-
-### Run Locally
-
-```bash
-# Clone the repo
-git clone <your-repo-url>
-cd tracelens
-
-# Set up backend
+```sh
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r backend/requirements-dev.txt
 cd backend
-pip install -r requirements.txt
 python main.py
 ```
 
-API runs at: http://localhost:8000
+On Windows PowerShell, create the environment with `py -3.12 -m venv .venv`, then activate it with `.\.venv\Scripts\Activate.ps1`. If your shell disallows activation, run `.\.venv\Scripts\python.exe` directly from the root with `-m pip install -r backend/requirements-dev.txt`; then run `..\.venv\Scripts\python.exe main.py` from `backend`.
 
-API docs at: http://localhost:8000/docs
+Open http://127.0.0.1:8000/health and http://127.0.0.1:8000/docs. The server reloads when Python files change. Stop it with Ctrl+C. Run it from `backend` so `app` imports resolve.
 
-### Seed Sample Data
+Defaults require no environment file. `.env.example` lists `HOST`, `PORT` and `ALLOWED_ORIGINS`; it is a reference and is **not automatically loaded**. Export values in your shell before starting if needed (PowerShell: `$env:PORT="8001"`; macOS/Linux: `export PORT=8001`). Local frontend origins on port 5173 are allowed by default. Container work must bind the API to `0.0.0.0` and document port/origin configuration.
 
-With the API running, in a second terminal:
+## Add synthetic data
 
-```bash
+In another terminal, activate the same environment and run from the root:
+
+```sh
 cd backend
 python seed_data.py
 ```
 
-### Run Tests
+The helper creates three projects and synthetic traces without calling an LLM. It checks every API write and reports errors rather than claiming a failed insert succeeded. Use `--base-url http://127.0.0.1:8001` for another API port and `--seed 42` for repeatable sample values. IDs/timestamps remain fresh. Each run **adds** records. Storage is in memory: stopping or reloading the API clears all data. Use synthetic data only; this unauthenticated starter is for local learning.
 
-```bash
+Model names and USD-per-million rates are fixed teaching fixtures, not live provider prices. Incorrect computed costs are part of TL-2 below.
+
+## Run the starter diagnostics
+
+From the root, with the environment active:
+
+```sh
 cd backend
-pytest tests/ -v
+python -m pytest tests -v
 ```
 
-Expect failures — several provided tests document the open tickets.
+**The initial suite is intentionally red.** It exposes the open tickets below, including the missing PATCH route. Repair the application; do not delete, skip or weaken checks to make it green. These public diagnostics are not a complete grading suite. Add meaningful regression and feature tests as you work; collecting zero tests is not success. [Test notes](backend/tests/README.md) distinguish setup failures from expected defect failures.
 
----
+## Inherited issue tracker - Module 2
 
-## Project Structure
+| Ticket | Required repaired behavior |
+|---|---|
+| TL-1 | A missing trace returns 404 rather than crashing. |
+| TL-2 | Costs use the fixed per-million-token rates and agree with a hand calculation. |
+| TL-3 | A page contains at most `limit` traces; `total` is the full filtered count before pagination. |
+| TL-4 | An existing project with no traces returns zeroed stats. |
+| TL-5 | Project deletion cannot leave dangling trace references: document and test cascade, detach or reject. |
+| TL-6 | Implement partial `PATCH /projects/{id}` with preserved omitted fields, timestamp update and missing-ID handling. |
 
-```
-tracelens/
-├── README.md                    # You are here
-│
-├── backend/
-│   ├── app/
-│   │   ├── __init__.py
-│   │   ├── api.py              # FastAPI routes (see the tickets!)
-│   │   ├── models.py           # Pydantic models
-│   │   ├── storage.py          # In-memory storage
-│   │   └── utils.py            # Cost calc, filters, pagination, stats
-│   ├── tests/
-│   │   ├── __init__.py
-│   │   ├── test_api.py         # Basic tests — some fail, pointing at tickets
-│   │   └── conftest.py         # Test fixtures
-│   ├── main.py                 # Entry point
-│   ├── seed_data.py            # Populate the API with sample data
-│   └── requirements.txt
-│
-├── frontend/                    # You'll create this in Module 4
-├── specs/                       # You'll create these in Module 2
-└── docs/                        # You'll create these in Module 1
-```
+See [CONTRACT.md](CONTRACT.md) for expected behavior and edge cases. The starter deliberately omits the repairs, new features, full documentation, AI instruction file, CI, containers and React application that you will create.
 
----
+## Course milestones
 
-## Your Mission
+| Module | Build and evidence | Criteria |
+|---|---|---|
+| [2 - Brownfield challenge](milestones/module-02.md) | Understand the system; close TL-1 through TL-6; verify AI changes. | C1.1-C1.6 |
+| [3 - Documentation and specs](milestones/module-03.md) | Document the repaired backend; specify evaluations and alert rules; demonstrate agent instructions. | C2.1-C2.3 |
+| [4 - Production-ready backend](milestones/module-04.md) | Build one feature test-first; tests, refactor, CI gate and containers. | C2.4-C2.8; finalize C2.1/C2.2 |
+| [5 - Full-stack application](milestones/module-05.md) | Build the other feature test-first and a specified React UI; reproducible deployment. | C3.1-C3.5 |
+| [6 - Delivery and defense](milestones/module-06.md) | Explain your own final code and decisions; no additional feature. | C3.6-C3.8 |
 
-### 🧪 Experimentation Encouraged!
-While we provide guidelines, **you are the engineer**. If you see a better way to solve a problem using AI, do it!
-- Want to swap the storage layer for a real database? **Go for it.**
-- Want to add authentication? **Do it.**
-- Want to restructure the API? **As long as tests pass, you're clear.**
+Both **Evaluation Scores** and **Alert Rules** are required. Either can come first; evaluations are a useful first choice. Requirements and open design decisions live in [specs/evaluations.md](specs/evaluations.md) and [specs/alert-rules.md](specs/alert-rules.md). Write your own implementable specs before coding.
 
-The goal is to learn how to build *better* software *faster* with AI. Don't be afraid to break things and rebuild them better.
+## Repository layout
 
-### Module 1: Rescue the Backend
-- Understand this codebase using AI
-- Close tickets TL-1 through TL-5
-- Implement the missing PATCH endpoint (TL-6)
+- `backend/app/`: inherited API, models, in-memory storage and utilities.
+- `backend/tests/`: public diagnostic starting point; expand it.
+- `backend/seed_data.py`: synthetic data helper.
+- `specs/`: learner-authored specifications, starting from the briefs provided.
+- `docs/`: your system model, API reference and supporting evidence.
+- `frontend/`: create the React application in Module 5.
+- `milestones/`, `rubrics/`, `ASSESSMENT.md`: course tasks and assessment expectations.
+- `EVIDENCE.md`: your continuing evidence record.
 
-### Module 2: Specify What Comes Next
-- Write professional documentation
-- Configure a custom AI agent for the project
-- Write feature specs: **Evaluations** and **Alert Rules**
-
-### Module 3: Make it Production-Ready
-- Comprehensive tests, one spec feature built with TDD
-- CI/CD pipeline and Docker
-
-### Module 4: Build the Frontend
-- The second spec feature, plus a React dashboard and trace explorer
-- Deployed where someone else can reach it
-
-### Module 5: Defend It
-- A recorded defense of code *we* pick
-
----
-
-## API Endpoints (Current)
-
-| Method | Endpoint | Description | Status |
-|--------|----------|-------------|--------|
-| GET | `/health` | Health check | ✅ Works |
-| GET | `/projects` | List projects | ✅ Works |
-| GET | `/projects/{id}` | Get single project | ✅ Works |
-| POST | `/projects` | Create project | ✅ Works |
-| PUT | `/projects/{id}` | Full update of a project | ✅ Works |
-| PATCH | `/projects/{id}` | Partial update (rename etc.) | ❌ TL-6: documented but missing |
-| DELETE | `/projects/{id}` | Delete project | ⚠️ TL-5 |
-| GET | `/projects/{id}/stats` | Cost / latency / error stats | ❌ TL-4 |
-| GET | `/traces` | List traces with filters + pagination | ⚠️ TL-3 |
-| GET | `/traces/{id}` | Get single trace | ❌ TL-1 |
-| POST | `/traces` | Ingest a trace | ⚠️ TL-2 (cost) |
-| DELETE | `/traces/{id}` | Delete trace | ✅ Works |
-
----
-
-## Tech Stack
-
-- **Backend**: Python 3.10+, FastAPI, Pydantic
-- **Frontend**: React, Vite (Module 4)
-- **Testing**: pytest, pytest-cov
-- **DevOps**: Docker, GitHub Actions (Module 3)
-
----
-
-Good luck, and welcome to the team! 🚀
+Keep route contracts stable while refactoring. Extensions such as persistence, authentication, live model ingestion or charts are optional and carry no extra credit. Finish the required work first; extras cannot compensate for an unmet criterion.

@@ -1,10 +1,11 @@
-"""TraceLens API Server
-
-Run with: python main.py
-"""
-
+"""Start the local API with reload; run from the backend directory."""
+import os
 import uvicorn
-from app.api import app
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(
+        "app.api:app",
+        host=os.getenv("HOST", "127.0.0.1"),
+        port=int(os.getenv("PORT", "8000")),
+        reload=True,
+    )
